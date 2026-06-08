@@ -1,0 +1,17 @@
+Admin Sync Controls & Post-Test Integration
+I have successfully updated the dashboard with the new Post-test Google Sheet and implemented Admin controls!
+
+What Changed?
+Integrated Post-test Sheet
+
+The dashboard now natively links to the Post-test sheet you provided (1K9ent4CeXrKpA4-EqiPQ-OiEJVwx0mtPgZYfaajjChc).
+Automated Live View for Users
+
+Regular users no longer see the "⚙️ Sync / Paste Data" button.
+When any user opens the dashboard, it automatically and silently pulls the most up-to-date information directly from the Pre-test and Post-test Google Sheets. They just see the updated dashboard!
+Admin Controls
+
+I added a hidden Admin mode to control syncing and pasting configurations.
+To access the Admin controls, simply add ?admin=1 to the end of your browser URL.
+Example: If you open the file in your browser, the URL might look like file:///C:/Users/asus/.../PrePostDashboard.html. Just change it to file:///C:/Users/asus/.../PrePostDashboard.html?admin=1 and press Enter.
+The "Sync / Paste Data" buttons will magically reappear, allowing you to manually paste data or change the connected Google Sheets if ever needed!

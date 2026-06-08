@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pre & Post Test Dashboard · ICDS Rajasthan</title>
+<meta name="description" content="Interactive Pre-test and Post-test analysis dashboard for ICDS/AWW Training Programme, Rajasthan. Paste Google Sheet data for instant analytics.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter','Segoe UI',system-ui,sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
+
+  /* ── Header ── */
+  .header{background:linear-gradient(135deg,#1a3a5c 0%,#1d6a8a 50%,#1a3a5c 100%);color:#fff;padding:22px 32px;border-bottom:1px solid rgba(0,0,0,.06);position:relative;overflow:hidden}
+  .header::before{content:'';position:absolute;top:-60%;right:-10%;width:400px;height:400px;background:radial-gradient(circle,rgba(255,255,255,.06) 0%,transparent 70%);pointer-events:none}
+  .header h1{font-size:22px;font-weight:700;letter-spacing:-.3px;display:flex;align-items:center;gap:10px}
+  .header p{font-size:13px;opacity:.7;margin-top:5px;font-weight:400}
+  .header-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);color:#fff;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;letter-spacing:.3px}
+
+  /* ── Tab Navigation ── */
+  .tab-bar{background:#fff;border-bottom:1px solid #e2e8f0;padding:0 32px;display:flex;gap:0}
+  .tab-btn{padding:14px 24px;font-size:13px;font-weight:600;color:#94a3b8;border:none;background:none;cursor:pointer;position:relative;transition:color .2s;letter-spacing:.2px;font-family:inherit}
+  .tab-btn:hover{color:#1e293b}
+  .tab-btn.active{color:#1d6a8a}
+  .tab-btn.active::after{content:'';position:absolute;bottom:0;left:12px;right:12px;height:2.5px;background:linear-gradient(90deg,#1d6a8a,#2d9cdb);border-radius:2px 2px 0 0}
+  .tab-btn .tab-dot{width:6px;height:6px;border-radius:50%;display:inline-block;margin-right:6px}
+  .tab-pre .tab-dot{background:#1d6a8a}
+  .tab-post .tab-dot{background:#7c3aed}
+  .tab-compare .tab-dot{background:#059669}
+
+  /* ── Container ── */
+  .container{padding:20px 32px;max-width:1280px;margin:0 auto}
+  .tab-content{display:none}
+  .tab-content.active{display:block;animation:fadeIn .3s ease}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+  /* ── Filter Bar ── */
+  .filter-bar{background:#fff;border-radius:14px;padding:14px 18px;margin-bottom:18px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .filter-bar label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .filter-group{display:flex;flex-direction:column;gap:4px}
+  select,input[type=date]{font-size:13px;padding:7px 12px;border:1px solid #d1d5db;border-radius:10px;background:#fff;color:#1e293b;height:36px;outline:none;font-family:inherit;transition:border-color .2s}
+  select:focus,input:focus{border-color:#1d6a8a;box-shadow:0 0 0 3px rgba(29,106,138,.1)}
+  option{background:#fff;color:#1e293b}
+
+  /* ── Buttons ── */
+  .btn{font-size:13px;padding:7px 16px;border-radius:10px;cursor:pointer;height:36px;border:1px solid;font-weight:600;font-family:inherit;transition:all .2s}
+  .btn-secondary{background:#f8fafc;border-color:#d1d5db;color:#64748b}
+  .btn-secondary:hover{background:#f1f5f9;color:#1e293b}
+  .btn-primary{background:linear-gradient(135deg,#1d6a8a,#2d9cdb);border-color:transparent;color:#fff}
+  .btn-primary:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 4px 12px rgba(29,106,138,.2)}
+  .btn-post{background:linear-gradient(135deg,#7c3aed,#a78bfa);border-color:transparent;color:#fff}
+  .btn-post:hover{opacity:.9;transform:translateY(-1px);box-shadow:0 4px 12px rgba(124,58,237,.2)}
+
+  /* ── KPIs ── */
+  .kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:14px;margin-bottom:18px}
+  .kpi{background:#fff;border-radius:14px;padding:16px 20px;border:1px solid #e2e8f0;transition:transform .2s,box-shadow .2s;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .kpi:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,.08)}
+  .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:14px 14px 0 0}
+  .kpi.teal::before{background:linear-gradient(90deg,#0d9488,#14b8a6)}
+  .kpi.green::before{background:linear-gradient(90deg,#059669,#10b981)}
+  .kpi.red::before{background:linear-gradient(90deg,#dc2626,#ef4444)}
+  .kpi.amber::before{background:linear-gradient(90deg,#d97706,#f59e0b)}
+  .kpi.navy::before{background:linear-gradient(90deg,#1d6a8a,#2d9cdb)}
+  .kpi.purple::before{background:linear-gradient(90deg,#7c3aed,#a78bfa)}
+  .kpi-label{font-size:10px;color:#94a3b8;text-transform:uppercase;letter-spacing:.8px;margin-bottom:6px;font-weight:600}
+  .kpi-val{font-size:28px;font-weight:800;letter-spacing:-.5px}
+  .kpi-sub{font-size:11px;color:#94a3b8;margin-top:3px}
+  .kpi.teal .kpi-val{color:#0d9488}
+  .kpi.green .kpi-val{color:#059669}
+  .kpi.red .kpi-val{color:#dc2626}
+  .kpi.amber .kpi-val{color:#d97706}
+  .kpi.navy .kpi-val{color:#1d6a8a}
+  .kpi.purple .kpi-val{color:#7c3aed}
+
+  /* ── Cards & Grids ── */
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:18px}
+  .grid3{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:18px}
+  .card{background:#fff;border-radius:14px;padding:18px 22px;border:1px solid #e2e8f0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .card-title{font-size:12px;font-weight:700;color:#64748b;margin-bottom:14px;display:flex;align-items:center;gap:8px;text-transform:uppercase;letter-spacing:.5px}
+  .dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .dot-green{background:#059669}.dot-red{background:#dc2626}.dot-blue{background:#1d6a8a}.dot-purple{background:#7c3aed}
+
+  /* ── Rankings ── */
+  .rank-list{list-style:none}
+  .rank-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid #f1f5f9}
+  .rank-item:last-child{border-bottom:none}
+  .rank-num{font-size:11px;color:#94a3b8;min-width:20px;text-align:center;font-weight:700}
+  .rank-name{font-size:13px;color:#1e293b;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500}
+  .rank-block{font-size:11px;color:#94a3b8}
+  .bar-outer{height:4px;border-radius:3px;background:#f1f5f9;margin-top:4px;width:100%}
+  .bar-inner{height:4px;border-radius:3px}
+  .bar-green{background:linear-gradient(90deg,#059669,#10b981)}
+  .bar-red{background:linear-gradient(90deg,#dc2626,#ef4444)}
+  .bar-purple{background:linear-gradient(90deg,#7c3aed,#a78bfa)}
+  .rank-score-top{font-size:14px;font-weight:700;color:#059669;min-width:48px;text-align:right}
+  .rank-score-bot{font-size:14px;font-weight:700;color:#dc2626;min-width:48px;text-align:right}
+
+  /* ── Charts ── */
+  .chart-wrap{position:relative;height:200px;width:100%}
+
+  /* ── Tables ── */
+  .section-title{font-size:12px;font-weight:700;color:#64748b;text-transform:uppercase;letter-spacing:.6px;margin:6px 0 14px;display:flex;align-items:center;gap:8px}
+  .table-wrap{background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow-x:auto;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{background:#f8fafc;color:#64748b;font-weight:600;font-size:11px;padding:11px 14px;text-align:left;border-bottom:1px solid #e2e8f0;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap}
+  tbody td{padding:10px 14px;border-bottom:1px solid #f1f5f9;color:#475569}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr:hover td{background:#f8fafc}
+  .badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+  .badge-pass{background:#d1fae5;color:#065f46;border:1px solid #a7f3d0}
+  .badge-fail{background:#fee2e2;color:#991b1b;border:1px solid #fecaca}
+  .pct-chip{font-weight:700}
+  .pct-high{color:#059669}
+  .pct-mid{color:#d97706}
+  .pct-low{color:#dc2626}
+
+  /* ── Paste Panel ── */
+  .paste-panel{background:#fff;border-radius:14px;padding:18px 22px;margin-bottom:18px;border:1px solid #e2e8f0;display:none;position:relative;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+  .paste-panel::before{content:'';position:absolute;top:0;left:0;width:4px;height:100%;border-radius:14px 0 0 14px}
+  .paste-panel.pre-paste::before{background:linear-gradient(180deg,#1d6a8a,#2d9cdb)}
+  .paste-panel.post-paste::before{background:linear-gradient(180deg,#7c3aed,#a78bfa)}
+  .paste-panel h3{font-size:15px;font-weight:700;color:#1e293b;margin-bottom:6px;padding-left:10px}
+  .paste-panel p{font-size:12px;color:#64748b;margin-bottom:12px;padding-left:10px}
+  textarea.paste-area{width:100%;height:110px;font-size:11px;font-family:'JetBrains Mono',monospace;border:1px solid #d1d5db;border-radius:10px;padding:10px;resize:vertical;background:#f8fafc;color:#475569;outline:none;transition:border-color .2s}
+  textarea.paste-area:focus{border-color:#1d6a8a}
+  .sync-row{display:flex;gap:12px;margin-bottom:14px;padding-left:10px;align-items:flex-end;flex-wrap:wrap}
+  .sync-input-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:200px}
+  .sync-input-group label{font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+  .sync-input{font-size:12px;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;outline:none;font-family:inherit;color:#1e293b;background:#f8fafc;transition:border-color .2s}
+  .sync-input:focus{border-color:#1d6a8a;background:#fff}
+  .divider{display:flex;align-items:center;text-align:center;color:#94a3b8;font-size:11px;font-weight:600;text-transform:uppercase;margin:16px 0;letter-spacing:1px}
+  .divider::before, .divider::after{content:'';flex:1;border-bottom:1px solid #e2e8f0}
+  .divider:not(:empty)::before{margin-right:10px}
+  .divider:not(:empty)::after{margin-left:10px}
+  .empty-state{text-align:center;padding:60px 20px;color:#94a3b8;font-size:14px}
+  .empty-state-icon{font-size:40px;margin-bottom:12px;opacity:.6}
+  .admin-only{display:none !important}
+
+  /* ── Loader & Refresh Badge ── */
+  .global-loader{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.9);z-index:9999;display:none;flex-direction:column;align-items:center;justify-content:center;backdrop-filter:blur(3px)}
+  .spinner{width:54px;height:54px;border:5px solid #e2e8f0;border-top-color:#1d6a8a;border-radius:50%;animation:spin 1s linear infinite;margin-bottom:20px}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .loader-text{font-size:18px;font-weight:700;color:#1e293b;letter-spacing:-0.4px;margin-bottom:6px}
+  .loader-sub{font-size:14px;color:#64748b;max-width:300px;text-align:center}
+  .refresh-info{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,0.85);font-weight:500;margin-left:auto;background:rgba(0,0,0,0.2);padding:5px 12px;border-radius:6px}
+
+  /* ── Comparison Specific ── */
+  .compare-kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:18px}
+  .delta-positive{color:#059669}
+  .delta-negative{color:#dc2626}
+  .delta-neutral{color:#d97706}
+  .improvement-arrow{font-size:16px}
+
+  /* ── Responsive ── */
+  @media(max-width:768px){
+    .grid2,.grid3{grid-template-columns:1fr}
+    .kpi-row{grid-template-columns:repeat(auto-fit,minmax(140px,1fr))}
+    .container{padding:16px}
+    .header{padding:18px 16px}
+    .tab-bar{padding:0 16px;overflow-x:auto}
+    .tab-btn{padding:12px 16px;font-size:12px;white-space:nowrap}
+  }
+
+  /* ── Scrollbar ── */
+  ::-webkit-scrollbar{width:6px;height:6px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+  ::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ GLOBAL LOADER ═══════════ -->
+<div id="global-loader" class="global-loader">
+  <div class="spinner"></div>
+  <div class="loader-text">Syncing Live Data...</div>
+  <div class="loader-sub">Pulling the latest responses from Google Sheets</div>
+</div>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<div class="header">
+  <div style="display:flex;align-items:center;flex-wrap:wrap;gap:12px">
+    <h1>📊 Pre & Post Test Dashboard <span class="header-badge">LIVE</span></h1>
+    <div class="refresh-info" title="Data automatically syncs from Google Sheets every time this page is loaded or refreshed.">
+      <span id="last-refresh-time">Last refreshed: --:--</span>
+      <span style="cursor:help;opacity:0.7">ⓘ</span>
+    </div>
+  </div>
+  <p style="margin-top:8px">ICDS / AWW Training Programme · Rajasthan · Real-time data from Google Sheets</p>
+</div>
+
+<!-- ═══════════ TAB BAR ═══════════ -->
+<div class="tab-bar">
+  <button class="tab-btn tab-pre active" onclick="switchTab('pre')" id="tab-btn-pre"><span class="tab-dot"></span>Pre-test</button>
+  <button class="tab-btn tab-post" onclick="switchTab('post')" id="tab-btn-post"><span class="tab-dot"></span>Post-test</button>
+  <button class="tab-btn tab-compare" onclick="switchTab('compare')" id="tab-btn-compare"><span class="tab-dot"></span>Comparison</button>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- ═══════════    PRE-TEST TAB    ═══════════ -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-content active" id="tab-pre">
+<div class="container">
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label>District</label>
+      <select id="pre-f-dist"><option value="">All Districts</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Block / Project</label>
+      <select id="pre-f-proj"><option value="">All Blocks</option></select>
+    </div>
+    <div class="filter-group">
+      <label>From date</label>
+      <input type="date" id="pre-f-from">
+    </div>
+    <div class="filter-group">
+      <label>To date</label>
+      <input type="date" id="pre-f-to">
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <button class="btn btn-secondary" onclick="clearFilters('pre')">Clear</button>
+      <button class="btn btn-primary admin-only" onclick="togglePaste('pre')">⚙️ Sync / Paste Data</button>
+    </div>
+    <div style="margin-left:auto;font-size:12px;color:#64748b;align-self:center" id="pre-record-count"></div>
+  </div>
+
+  <!-- Paste Panel -->
+  <div class="paste-panel pre-paste" id="pre-paste-panel">
+    <h3>🔄 Sync Pre-test Data</h3>
+    <p>Connect directly to your Google Sheet or manually paste data below.</p>
+    
+    <div class="sync-row">
+      <div class="sync-input-group" style="flex:2">
+        <label>Google Sheet ID</label>
+        <input type="text" class="sync-input" id="pre-sheet-id" placeholder="e.g. 1nIaGd0GkIgtzbzR6FMNCoUhUzZoiurF1jqJgg5e-Ndw">
+      </div>
+      <div class="sync-input-group">
+        <label>Sheet / Tab Name</label>
+        <input type="text" class="sync-input" id="pre-sheet-tab" placeholder="e.g. Sheet1">
+      </div>
+      <button class="btn btn-primary" onclick="syncFromSheet('pre')" id="pre-sync-btn">Sync Data</button>
+    </div>
+
+    <div class="divider">OR PASTE MANUALLY</div>
+
+    <textarea class="paste-area" id="pre-paste-input" placeholder="Timestamp&#9;Score&#9;नाम&#9;पदनाम&#9;जिला&#9;Project Name&#10;27/05/2026 10:36:46&#9;22 / 42&#9;..."></textarea>
+    <div style="display:flex;gap:10px;margin-top:10px;padding-left:10px">
+      <button class="btn btn-primary" onclick="loadPastedData('pre')">Load manual data</button>
+      <button class="btn btn-secondary" onclick="togglePaste('pre')">Close panel</button>
+      <span id="pre-paste-msg" style="font-size:12px;color:#64748b;align-self:center"></span>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div id="pre-main-content"></div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- ═══════════   POST-TEST TAB    ═══════════ -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-content" id="tab-post">
+<div class="container">
+
+  <!-- Filter Bar -->
+  <div class="filter-bar">
+    <div class="filter-group">
+      <label>District</label>
+      <select id="post-f-dist"><option value="">All Districts</option></select>
+    </div>
+    <div class="filter-group">
+      <label>Block / Project</label>
+      <select id="post-f-proj"><option value="">All Blocks</option></select>
+    </div>
+    <div class="filter-group">
+      <label>From date</label>
+      <input type="date" id="post-f-from">
+    </div>
+    <div class="filter-group">
+      <label>To date</label>
+      <input type="date" id="post-f-to">
+    </div>
+    <div style="display:flex;gap:8px;align-items:flex-end">
+      <button class="btn btn-secondary" onclick="clearFilters('post')">Clear</button>
+      <button class="btn btn-post admin-only" onclick="togglePaste('post')">⚙️ Sync / Paste Data</button>
+    </div>
+    <div style="margin-left:auto;font-size:12px;color:#64748b;align-self:center" id="post-record-count"></div>
+  </div>
+
+  <!-- Paste Panel -->
+  <div class="paste-panel post-paste" id="post-paste-panel">
+    <h3>🔄 Sync Post-test Data</h3>
+    <p>Connect directly to your Google Sheet or manually paste data below.</p>
+    
+    <div class="sync-row">
+      <div class="sync-input-group" style="flex:2">
+        <label>Google Sheet ID</label>
+        <input type="text" class="sync-input" id="post-sheet-id" placeholder="e.g. 1nIaGd0GkIgtzbzR6FMNCoUhUzZoiurF1jqJgg5e-Ndw">
+      </div>
+      <div class="sync-input-group">
+        <label>Sheet / Tab Name</label>
+        <input type="text" class="sync-input" id="post-sheet-tab" placeholder="e.g. Sheet2">
+      </div>
+      <button class="btn btn-post" onclick="syncFromSheet('post')" id="post-sync-btn">Sync Data</button>
+    </div>
+
+    <div class="divider">OR PASTE MANUALLY</div>
+
+    <textarea class="paste-area" id="post-paste-input" placeholder="Timestamp&#9;Score&#9;नाम&#9;पदनाम&#9;जिला&#9;Project Name&#10;28/05/2026 14:22:10&#9;38 / 42&#9;..."></textarea>
+    <div style="display:flex;gap:10px;margin-top:10px;padding-left:10px">
+      <button class="btn btn-post" onclick="loadPastedData('post')">Load manual data</button>
+      <button class="btn btn-secondary" onclick="togglePaste('post')">Close panel</button>
+      <span id="post-paste-msg" style="font-size:12px;color:#64748b;align-self:center"></span>
+    </div>
+  </div>
+
+  <!-- Main Content -->
+  <div id="post-main-content"></div>
+
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════ -->
+<!-- ═══════════  COMPARISON TAB    ═══════════ -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="tab-content" id="tab-compare">
+<div class="container">
+  <div id="compare-main-content"></div>
+</div>
+</div>
+
+<script>
+/* Register Chart.js DataLabels plugin */
+Chart.register(ChartDataLabels);
+
+/* ═══════════════════════════════════════════════════════════════
+   DATA & STATE
+   ═══════════════════════════════════════════════════════════════ */
+
+const DEFAULT_PRE_TSV = `Timestamp\tScore\tनाम\tपदनाम\tजिला\tProject Name
+27/05/2026 10:36:46\t22 / 42\tबबीता योगी\tआंगनबाड़ी कार्यकर्ता\tJAIPUR\tशाहपुरा
+27/05/2026 10:37:35\t26 / 42\tSwati\tLs\tJAIPUR\tShahpura
+27/05/2026 10:37:51\t26 / 42\tManju Verma\tMannu Verma\tJAIPUR\tShahpura
+27/05/2026 10:37:59\t18 / 42\tSushila Gurjar\tAnganbadi worker\tJAIPUR\tShahapura
+27/05/2026 10:38:02\t18 / 42\tGyarasi devi swami\tAWW\tJAIPUR\tShahpura
+27/05/2026 10:38:06\t24 / 42\tसुमन चौहान\tआंगनवाड़ी कार्यकर्ता\tJAIPUR\tशाहपुरा
+27/05/2026 10:38:36\t26 / 42\tSusheela Davi\tAww\tJAIPUR\tShahpura
+27/05/2026 10:39:01\t28 / 42\tसुनीता वर्मा\tआगन बाडी पीपलोद नाथू\tJAIPUR\tशाहपुरा
+27/05/2026 10:39:08\t24 / 42\tSaroj Verma\tKarykarta\tJAIPUR\tShahpura
+27/05/2026 10:39:10\t22 / 42\tKrishna yadav\tL s\tJAIPUR\tShahpura
+27/05/2026 10:40:03\t20 / 42\tSaurabh Kumar\tब्लॉक कोर्डिनेटर\tJAIPUR\tShahpura
+27/05/2026 10:40:40\t22 / 42\tPinki kumawat\tAWW\tJAIPUR\tShahpura
+27/05/2026 10:40:41\t30 / 42\tSuneeta sharma\tLady supervisor\tJAIPUR\tShahpura`;
+
+let preData = [];
+let postData = [];
+let charts = { pre: null, post: null, compareDist: null, compareBar: null };
+
+/* ═══════════════════════════════════════════════════════════════
+   PARSER & SYNC
+   ═══════════════════════════════════════════════════════════════ */
+function processDataMatrix(matrix) {
+  if (matrix.length < 2) return [];
+  const out = [];
+  for (let i = 1; i < matrix.length; i++) {
+    const cols = matrix[i];
+    if (cols.length < 6) continue;
+    const [ts, scoreRaw, name, desig, dist, proj] = cols.map(c => c ? c.trim() : '');
+    if (!name || !scoreRaw) continue;
+    const m = scoreRaw.match(/(\d+)\s*\/\s*(\d+)/);
+    if (!m) continue;
+    const score = parseInt(m[1]);
+    const total = parseInt(m[2]);
+    if (isNaN(score) || isNaN(total) || total === 0) continue;
+    const pct = Math.round(score / total * 100);
+    let date = null;
+    const dm = ts.match(/(\d{2})\/(\d{2})\/(\d{4})/);
+    if (dm) date = new Date(`${dm[3]}-${dm[2]}-${dm[1]}`);
+    const projKey = proj.toLowerCase().replace(/\s+/g, '');
+    const nameKey = name.toLowerCase().replace(/\s+/g, '');
+    out.push({ ts, score, total, pct, name, desig, dist: dist.toUpperCase(), proj, projKey, nameKey, date });
+  }
+  return out;
+}
+
+function parseRows(tsv) {
+  const lines = tsv.trim().split('\n');
+  const matrix = lines.map(line => line.split('\t'));
+  return processDataMatrix(matrix);
+}
+
+function parseCSV(str) {
+  const rows = []; let cols = []; let col = ''; let inQuotes = false;
+  for (let i = 0; i < str.length; i++) {
+    const c = str[i], nextC = str[i+1];
+    if (inQuotes) {
+      if (c === '"' && nextC === '"') { col += '"'; i++; }
+      else if (c === '"') { inQuotes = false; }
+      else { col += c; }
+    } else {
+      if (c === '"') { inQuotes = true; }
+      else if (c === ',') { cols.push(col); col = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && nextC === '\n') i++;
+        cols.push(col); rows.push(cols); cols = []; col = '';
+      }
+      else { col += c; }
+    }
+  }
+  if (col !== '' || cols.length > 0) { cols.push(col); rows.push(cols); }
+  return rows;
+}
+
+async function syncFromSheet(type, isAutoSync = false) {
+  const idInput = document.getElementById(type + '-sheet-id');
+  const tabInput = document.getElementById(type + '-sheet-tab');
+  const btn = document.getElementById(type + '-sync-btn');
+  const id = idInput.value.trim();
+  const tab = tabInput.value.trim();
+  
+  if (!id) { 
+    if (!isAutoSync) alert('Please enter a Google Sheet ID'); 
+    return; 
+  }
+  
+  localStorage.setItem(type + 'SheetId', id);
+  localStorage.setItem(type + 'SheetTab', tab);
+  
+  // Use Vercel API proxy if available, otherwise fallback to direct Google Sheets fetch
+  const isLocal = window.location.protocol === 'file:' || window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost';
+  const url = isLocal 
+    ? `https://docs.google.com/spreadsheets/d/${id}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(tab)}`
+    : `/api/sync?id=${encodeURIComponent(id)}&tab=${encodeURIComponent(tab)}`;
+  
+  const origText = btn.innerText;
+  btn.innerText = 'Syncing...';
+  btn.disabled = true;
+  
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed to fetch. Check if the sheet is "Anyone with the link can view".');
+    const csv = await res.text();
+    
+    // Check if the response looks like HTML (Google login page) instead of CSV
+    if (csv.trim().startsWith('<!DOCTYPE html>')) {
+      throw new Error('Google Sheet is private. Please change share settings to "Anyone with the link can view".');
+    }
+
+    const matrix = parseCSV(csv);
+    const data = processDataMatrix(matrix);
+    
+    if (data.length === 0) throw new Error('No valid data found in the sheet. Make sure the headers and columns match.');
+    
+    if (type === 'pre') { preData = data; localStorage.setItem('preSyncCSV', csv); }
+    else { postData = data; localStorage.setItem('postSyncCSV', csv); }
+    
+    populateFilters(type);
+    renderDashboard(type);
+    if (document.getElementById('tab-compare').classList.contains('active')) renderComparison();
+    
+    btn.innerText = 'Synced ✓';
+    setTimeout(() => { btn.innerText = origText; }, 2000);
+  } catch(e) {
+    if (!isAutoSync) alert(e.message);
+    console.error(`Sync error (${type}):`, e.message);
+    btn.innerText = 'Error';
+    setTimeout(() => { btn.innerText = origText; }, 2000);
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════════════════════════ */
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+  document.getElementById('tab-btn-' + tab).classList.add('active');
+  document.getElementById('tab-' + tab).classList.add('active');
+  if (tab === 'compare') renderComparison();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FILTERS
+   ═══════════════════════════════════════════════════════════════ */
+function getFiltered(type) {
+  const data = type === 'pre' ? preData : postData;
+  const dist = document.getElementById(type + '-f-dist').value;
+  const proj = document.getElementById(type + '-f-proj').value;
+  const from = document.getElementById(type + '-f-from').value;
+  const to = document.getElementById(type + '-f-to').value;
+  return data.filter(r => {
+    if (dist && r.dist !== dist) return false;
+    if (proj && r.projKey !== proj) return false;
+    if (from && r.date && r.date < new Date(from)) return false;
+    if (to && r.date && r.date > new Date(to + 'T23:59:59')) return false;
+    return true;
+  });
+}
+
+function populateFilters(type) {
+  const data = type === 'pre' ? preData : postData;
+  const dists = [...new Set(data.map(r => r.dist))].sort();
+  const fd = document.getElementById(type + '-f-dist');
+  const curD = fd.value;
+  fd.innerHTML = '<option value="">All Districts</option>' + dists.map(d => `<option value="${d}"${d===curD?' selected':''}>${d}</option>`).join('');
+  updateProjectFilter(type);
+}
+
+function updateProjectFilter(type) {
+  const data = type === 'pre' ? preData : postData;
+  const fd = document.getElementById(type + '-f-dist');
+  const fp = document.getElementById(type + '-f-proj');
+  const curD = fd.value;
+  const curP = fp.value;
+  
+  const filteredData = curD ? data.filter(r => r.dist === curD) : data;
+  const projMap = {};
+  filteredData.forEach(r => { projMap[r.projKey] = r.proj; });
+  
+  const sortedKeys = Object.keys(projMap).sort((a,b) => projMap[a].localeCompare(projMap[b]));
+  fp.innerHTML = '<option value="">All Blocks</option>' + sortedKeys.map(k => `<option value="${k}"${k===curP?' selected':''}>${projMap[k]}</option>`).join('');
+  
+  if (curP && !projMap[curP]) fp.value = '';
+}
+
+function clearFilters(type) {
+  [type+'-f-dist', type+'-f-proj', type+'-f-from', type+'-f-to'].forEach(id => document.getElementById(id).value = '');
+  updateProjectFilter(type);
+  renderDashboard(type);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PASTE
+   ═══════════════════════════════════════════════════════════════ */
+function togglePaste(type) {
+  const p = document.getElementById(type + '-paste-panel');
+  p.style.display = p.style.display === 'none' || !p.style.display ? 'block' : 'none';
+}
+
+function loadPastedData(type) {
+  const raw = document.getElementById(type + '-paste-input').value.trim();
+  if (!raw) return;
+  const parsed = parseRows(raw);
+  if (!parsed.length) {
+    document.getElementById(type + '-paste-msg').textContent = '⚠ No valid rows found. Check format.';
+    return;
+  }
+  if (type === 'pre') preData = parsed;
+  else postData = parsed;
+  // Save to localStorage
+  try { localStorage.setItem(type + 'TestData', raw); } catch(e) {}
+  populateFilters(type);
+  togglePaste(type);
+  renderDashboard(type);
+  document.getElementById(type + '-paste-msg').textContent = '';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   UTILITY
+   ═══════════════════════════════════════════════════════════════ */
+function pctClass(p) {
+  if (p >= 60) return 'pct-high';
+  if (p >= 40) return 'pct-mid';
+  return 'pct-low';
+}
+
+function getDesigCategory(d) {
+  d = d.toLowerCase();
+  if (d.includes('supervisor') || d.includes('ls') || d.includes('lady sup')) return 'Lady Supervisor';
+  if (d.includes('coordinator') || d.includes('coord') || d.includes('कोर्डिनेटर')) return 'Coordinator';
+  if (d.includes('worker') || d.includes('karyakarta') || d.includes('कार्यकर्ता') || d.includes('aww') || d.includes('karykarta')) return 'AWW / Karyakarta';
+  return 'Other';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDER DASHBOARD (Pre / Post)
+   ═══════════════════════════════════════════════════════════════ */
+function renderDashboard(type) {
+  const data = getFiltered(type);
+  const el = document.getElementById(type + '-main-content');
+  document.getElementById(type + '-record-count').textContent = data.length + ' record' + (data.length !== 1 ? 's' : '');
+
+  const accentColor = type === 'pre' ? '#38bdf8' : '#a78bfa';
+  const gradColors = type === 'pre' ? ['#38bdf8','#22d3ee'] : ['#a78bfa','#c084fc'];
+  const barClass = type === 'pre' ? 'bar-green' : 'bar-purple';
+  const dotClass = type === 'pre' ? 'dot-blue' : 'dot-purple';
+
+  if (!data.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div>No data yet. Click "<b>⊕ Paste Data</b>" above to load ${type}-test data from your Google Sheet.</div>`;
+    if (charts[type]) { charts[type].destroy(); charts[type] = null; }
+    return;
+  }
+
+  const scores = data.map(r => r.score);
+  const avg = scores.reduce((a,b)=>a+b,0)/scores.length;
+  const maxScore = Math.max(...scores);
+  const minScore = Math.min(...scores);
+  const total = data[0].total;
+  const passCount = data.filter(r => r.pct >= 50).length;
+  const maxRec = data.filter(r => r.score === maxScore).map(r => r.name).join(', ');
+  const minRec = data.filter(r => r.score === minScore).map(r => r.name).join(', ');
+
+  const sorted = [...data].sort((a,b) => b.score - a.score);
+  const top5 = sorted.slice(0,5);
+  const bot5 = [...data].sort((a,b) => a.score - b.score).slice(0,5);
+
+  const bucketSize = Math.ceil(total / 5);
+  const buckets = [];
+  for (let i = 0; i < 5; i++) {
+    const mn = i * bucketSize + (i === 0 ? 0 : 1);
+    const mx = Math.min((i + 1) * bucketSize, total);
+    buckets.push({ label: `${i === 0 ? 0 : i * bucketSize + 1}–${mx}`, min: mn, max: mx, count: 0 });
+  }
+  // Recalculate cleaner buckets for score 42
+  const cleanBuckets = [
+    {label:'0–8',min:0,max:8,count:0},
+    {label:'9–16',min:9,max:16,count:0},
+    {label:'17–24',min:17,max:24,count:0},
+    {label:'25–33',min:25,max:33,count:0},
+    {label:'34–42',min:34,max:42,count:0},
+  ];
+  data.forEach(r => { const b = cleanBuckets.find(b => r.score >= b.min && r.score <= b.max); if(b) b.count++; });
+
+  const designations = {};
+  data.forEach(r => { const cat = getDesigCategory(r.desig); designations[cat] = (designations[cat]||0)+1; });
+
+  const testLabel = type === 'pre' ? 'Pre-test' : 'Post-test';
+
+  el.innerHTML = `
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi teal">
+      <div class="kpi-label">Average Score</div>
+      <div class="kpi-val">${avg.toFixed(1)}<span style="font-size:14px;font-weight:400;color:#64748b"> / ${total}</span></div>
+      <div class="kpi-sub">${Math.round(avg/total*100)}% average performance</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Highest Score</div>
+      <div class="kpi-val">${maxScore}<span style="font-size:14px;font-weight:400;color:#64748b"> / ${total}</span></div>
+      <div class="kpi-sub">${maxRec}</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">Lowest Score</div>
+      <div class="kpi-val">${minScore}<span style="font-size:14px;font-weight:400;color:#64748b"> / ${total}</span></div>
+      <div class="kpi-sub">${minRec}</div>
+    </div>
+    <div class="kpi navy">
+      <div class="kpi-label">Participants</div>
+      <div class="kpi-val">${data.length}</div>
+      <div class="kpi-sub">${[...new Set(data.map(r=>r.dist))].length} district(s) · ${[...new Set(data.map(r=>r.projKey))].length} block(s)</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-label">≥50% (Pass)</div>
+      <div class="kpi-val">${passCount}</div>
+      <div class="kpi-sub">${Math.round(passCount/data.length*100)}% of participants</div>
+    </div>
+  </div>
+
+  <!-- Top & Bottom 5 -->
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="dot dot-green"></span>Top 5 Performers</div>
+      <ul class="rank-list" id="${type}-top5-list"></ul>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot dot-red"></span>Bottom 5 Performers</div>
+      <ul class="rank-list" id="${type}-bot5-list"></ul>
+    </div>
+  </div>
+
+  <!-- Chart + Role -->
+  <div class="grid3">
+    <div class="card">
+      <div class="card-title"><span class="dot ${dotClass}"></span>Score Distribution</div>
+      <div class="chart-wrap"><canvas id="${type}-distChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot ${dotClass}"></span>Role Breakdown</div>
+      <div id="${type}-role-breakdown"></div>
+    </div>
+  </div>
+
+  <!-- Raw Table -->
+  <div class="section-title">📋 ${testLabel} data — ${data.length} records</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Name</th><th>Designation</th><th>District</th><th>Block / Project</th>
+          <th>Score</th><th>%</th><th>Status</th><th>Date & Time</th>
+        </tr>
+      </thead>
+      <tbody id="${type}-raw-body"></tbody>
+    </table>
+  </div>
+  <div style="height:24px"></div>`;
+
+  // Top 5
+  const t5 = document.getElementById(type + '-top5-list');
+  top5.forEach((r,i) => {
+    const medal = i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+    t5.innerHTML += `<li class="rank-item">
+      <span class="rank-num">${medal||i+1}</span>
+      <div style="flex:1;min-width:0">
+        <div class="rank-name">${r.name}</div>
+        <div style="font-size:11px;color:#64748b">${r.proj} · ${r.desig}</div>
+        <div class="bar-outer"><div class="bar-inner ${barClass}" style="width:${r.pct}%"></div></div>
+      </div>
+      <span class="rank-score-top">${r.score}/${r.total}</span>
+    </li>`;
+  });
+
+  // Bottom 5
+  const b5 = document.getElementById(type + '-bot5-list');
+  bot5.forEach((r,i) => {
+    b5.innerHTML += `<li class="rank-item">
+      <span class="rank-num">${i+1}</span>
+      <div style="flex:1;min-width:0">
+        <div class="rank-name">${r.name}</div>
+        <div style="font-size:11px;color:#64748b">${r.proj} · ${r.desig}</div>
+        <div class="bar-outer"><div class="bar-inner bar-red" style="width:${r.pct}%"></div></div>
+      </div>
+      <span class="rank-score-bot">${r.score}/${r.total}</span>
+    </li>`;
+  });
+
+  // Role breakdown
+  const roleEl = document.getElementById(type + '-role-breakdown');
+  Object.entries(designations).sort((a,b)=>b[1]-a[1]).forEach(([role, cnt]) => {
+    const pct = Math.round(cnt/data.length*100);
+    roleEl.innerHTML += `<div style="margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px">
+        <span style="color:#475569">${role}</span>
+        <span style="font-weight:700;color:${accentColor}">${cnt} <span style="font-weight:400;color:#94a3b8">(${pct}%)</span></span>
+      </div>
+      <div style="height:5px;background:#f1f5f9;border-radius:4px">
+        <div style="height:5px;border-radius:4px;background:linear-gradient(90deg,${gradColors[0]},${gradColors[1]});width:${pct}%"></div>
+      </div>
+    </div>`;
+  });
+
+  // Chart
+  if (charts[type]) { charts[type].destroy(); charts[type] = null; }
+  const ctx = document.getElementById(type + '-distChart');
+  if (ctx) {
+    const bgColors = type === 'pre'
+      ? ['rgba(248,113,113,.3)','rgba(251,191,36,.3)','rgba(56,189,248,.3)','rgba(52,211,153,.3)','rgba(34,211,153,.4)']
+      : ['rgba(248,113,113,.3)','rgba(251,191,36,.3)','rgba(167,139,250,.3)','rgba(192,132,252,.3)','rgba(167,139,250,.5)'];
+    const borderColors = type === 'pre'
+      ? ['#f87171','#fbbf24','#38bdf8','#34d399','#22d3ee']
+      : ['#f87171','#fbbf24','#a78bfa','#c084fc','#a78bfa'];
+    charts[type] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: cleanBuckets.map(b => b.label),
+        datasets: [{
+          label: 'Participants',
+          data: cleanBuckets.map(b => b.count),
+          backgroundColor: bgColors,
+          borderColor: borderColors,
+          borderWidth: 1,
+          borderRadius: 8,
+          borderSkipped: false
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        layout: { padding: { top: 24 } },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            backgroundColor: '#fff',
+            borderColor: '#e2e8f0',
+            borderWidth: 1,
+            titleColor: '#1e293b',
+            bodyColor: '#64748b',
+            cornerRadius: 8,
+            callbacks: { label: ctx => ` ${ctx.parsed.y} participant${ctx.parsed.y!==1?'s':''}` }
+          },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            color: '#1e293b',
+            font: { size: 12, weight: 700, family: 'Inter' },
+            formatter: v => v > 0 ? v : ''
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1, color:'#64748b', font:{size:11,family:'Inter'} }, grid:{color:'rgba(0,0,0,0.04)'} },
+          x: { ticks: { color:'#64748b', font:{size:11,family:'Inter'} }, grid:{display:false} }
+        }
+      }
+    });
+  }
+
+  // Raw table — sort by date descending (latest first)
+  const sortedByDate = [...data].sort((a, b) => {
+    if (a.date && b.date) return b.date - a.date;
+    if (a.date) return -1;
+    if (b.date) return 1;
+    return 0;
+  });
+  const tbody = document.getElementById(type + '-raw-body');
+  sortedByDate.forEach((r,i) => {
+    const pass = r.pct >= 50;
+    tbody.innerHTML += `<tr>
+      <td style="color:#94a3b8">${i+1}</td>
+      <td style="font-weight:600;color:#1e293b">${r.name}</td>
+      <td style="color:#64748b">${r.desig}</td>
+      <td><span style="background:#e0f2fe;color:#0369a1;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid #bae6fd">${r.dist}</span></td>
+      <td style="color:#475569">${r.proj}</td>
+      <td style="font-weight:700;${pass?'color:#059669':'color:#dc2626'}">${r.score}/${r.total}</td>
+      <td class="pct-chip ${pctClass(r.pct)}">${r.pct}%</td>
+      <td><span class="badge ${pass?'badge-pass':'badge-fail'}">${pass?'✓ Pass':'Needs work'}</span></td>
+      <td style="color:#94a3b8;font-size:12px;white-space:nowrap">${r.ts}</td>
+    </tr>`;
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RENDER COMPARISON
+   ═══════════════════════════════════════════════════════════════ */
+function renderComparison() {
+  const el = document.getElementById('compare-main-content');
+
+  if (!preData.length && !postData.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div>No data loaded yet. Paste <b>Pre-test</b> and <b>Post-test</b> data first to see the comparison.</div>`;
+    return;
+  }
+  if (!preData.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">⬅️</div>Pre-test data missing. Go to the <b>Pre-test</b> tab and paste your data.</div>`;
+    return;
+  }
+  if (!postData.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">➡️</div>Post-test data missing. Go to the <b>Post-test</b> tab and paste your data.</div>`;
+    return;
+  }
+
+  // Apply active filters
+  const fPre = getFiltered('pre');
+  const fPost = getFiltered('post');
+
+  if (!fPre.length && !fPost.length) {
+    el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📊</div>No data matches the selected filters.</div>`;
+    return;
+  }
+
+  // Match participants by nameKey
+  const preMap = {};
+  fPre.forEach(r => { preMap[r.nameKey] = r; });
+  const matched = [];
+  const postOnly = [];
+  fPost.forEach(r => {
+    if (preMap[r.nameKey]) {
+      matched.push({ name: r.name, dist: r.dist, proj: r.proj, desig: r.desig,
+        prePct: preMap[r.nameKey].pct, postPct: r.pct,
+        preScore: preMap[r.nameKey].score, postScore: r.score,
+        total: r.total, delta: r.pct - preMap[r.nameKey].pct });
+      delete preMap[r.nameKey];
+    } else {
+      postOnly.push(r);
+    }
+  });
+  const preOnly = Object.values(preMap);
+
+  // Aggregate stats
+  const preScores = fPre.map(r => r.pct);
+  const postScores = fPost.map(r => r.pct);
+  const preAvg = preScores.length ? preScores.reduce((a,b)=>a+b,0)/preScores.length : 0;
+  const postAvg = postScores.length ? postScores.reduce((a,b)=>a+b,0)/postScores.length : 0;
+  const prePass = fPre.filter(r => r.pct >= 50).length;
+  const postPass = fPost.filter(r => r.pct >= 50).length;
+  const prePassPct = fPre.length ? Math.round(prePass/fPre.length*100) : 0;
+  const postPassPct = fPost.length ? Math.round(postPass/fPost.length*100) : 0;
+  const avgDelta = postAvg - preAvg;
+  const passRateDelta = postPassPct - prePassPct;
+
+  const improved = matched.filter(m => m.delta > 0).length;
+  const declined = matched.filter(m => m.delta < 0).length;
+  const noChange = matched.filter(m => m.delta === 0).length;
+
+  // Score distribution buckets
+  const preBuckets = [{l:'0–20',min:0,max:20,c:0},{l:'21–40',min:21,max:40,c:0},{l:'41–60',min:41,max:60,c:0},{l:'61–80',min:61,max:80,c:0},{l:'81–100',min:81,max:100,c:0}];
+  const postBuckets = [{l:'0–20',min:0,max:20,c:0},{l:'21–40',min:21,max:40,c:0},{l:'41–60',min:41,max:60,c:0},{l:'61–80',min:61,max:80,c:0},{l:'81–100',min:81,max:100,c:0}];
+  fPre.forEach(r => { const b = preBuckets.find(b => r.pct >= b.min && r.pct <= b.max); if(b) b.c++; });
+  fPost.forEach(r => { const b = postBuckets.find(b => r.pct >= b.min && r.pct <= b.max); if(b) b.c++; });
+
+  const deltaSign = (v) => v > 0 ? '+' : '';
+  const deltaClass = (v) => v > 0 ? 'delta-positive' : v < 0 ? 'delta-negative' : 'delta-neutral';
+  const deltaArrow = (v) => v > 0 ? '↑' : v < 0 ? '↓' : '→';
+
+  el.innerHTML = `
+  <!-- KPIs -->
+  <div class="kpi-row">
+    <div class="kpi teal">
+      <div class="kpi-label">Avg Score Change</div>
+      <div class="kpi-val ${deltaClass(avgDelta)}">${deltaSign(avgDelta)}${avgDelta.toFixed(1)}%</div>
+      <div class="kpi-sub">${preAvg.toFixed(1)}% → ${postAvg.toFixed(1)}%</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Pass Rate Change</div>
+      <div class="kpi-val ${deltaClass(passRateDelta)}">${deltaSign(passRateDelta)}${passRateDelta}%</div>
+      <div class="kpi-sub">${prePassPct}% → ${postPassPct}%</div>
+    </div>
+    <div class="kpi navy">
+      <div class="kpi-label">Matched Participants</div>
+      <div class="kpi-val">${matched.length}</div>
+      <div class="kpi-sub">of ${fPre.length} pre + ${fPost.length} post</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-label">Improved</div>
+      <div class="kpi-val delta-positive">${improved}</div>
+      <div class="kpi-sub">${matched.length ? Math.round(improved/matched.length*100) : 0}% of matched</div>
+    </div>
+    <div class="kpi red">
+      <div class="kpi-label">Declined</div>
+      <div class="kpi-val delta-negative">${declined}</div>
+      <div class="kpi-sub">${noChange} unchanged</div>
+    </div>
+  </div>
+
+  <!-- Charts -->
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="dot dot-green"></span>Score Distribution: Pre vs Post (%)</div>
+      <div class="chart-wrap"><canvas id="compare-dist-chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot dot-purple"></span>Average & Pass Rate Comparison</div>
+      <div class="chart-wrap"><canvas id="compare-bar-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- Top improvers & decliners -->
+  ${matched.length ? `
+  <div class="grid2">
+    <div class="card">
+      <div class="card-title"><span class="dot dot-green"></span>Top 5 Most Improved</div>
+      <ul class="rank-list" id="compare-top-improve"></ul>
+    </div>
+    <div class="card">
+      <div class="card-title"><span class="dot dot-red"></span>Top 5 Most Declined</div>
+      <ul class="rank-list" id="compare-top-decline"></ul>
+    </div>
+  </div>
+  ` : ''}
+
+  <!-- Participant-level table -->
+  ${matched.length ? `
+  <div class="section-title">📋 Participant Comparison — ${matched.length} matched records</div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th>Name</th><th>District</th><th>Block</th>
+          <th>Pre-test</th><th>Post-test</th><th>Change</th><th>Trend</th>
+        </tr>
+      </thead>
+      <tbody id="compare-table-body"></tbody>
+    </table>
+  </div>
+  ` : '<div class="empty-state"><div class="empty-state-icon">🔗</div>No participants could be matched by name between pre-test and post-test. Ensure names are consistent.</div>'}
+
+  ${preOnly.length ? `<div style="margin-top:18px;padding:14px 18px;background:#e0f2fe;border:1px solid #bae6fd;border-radius:12px;font-size:13px;color:#475569">
+    <strong style="color:#0369a1">ℹ ${preOnly.length} pre-test only:</strong> ${preOnly.map(r => r.name).join(', ')}
+  </div>` : ''}
+  ${postOnly.length ? `<div style="margin-top:10px;padding:14px 18px;background:#ede9fe;border:1px solid #ddd6fe;border-radius:12px;font-size:13px;color:#475569">
+    <strong style="color:#7c3aed">ℹ ${postOnly.length} post-test only:</strong> ${postOnly.map(r => r.name).join(', ')}
+  </div>` : ''}
+  <div style="height:24px"></div>`;
+
+  // Charts
+  if (charts.compareDist) { charts.compareDist.destroy(); charts.compareDist = null; }
+  if (charts.compareBar) { charts.compareBar.destroy(); charts.compareBar = null; }
+
+  const ctx1 = document.getElementById('compare-dist-chart');
+  if (ctx1) {
+    charts.compareDist = new Chart(ctx1, {
+      type: 'bar',
+      data: {
+        labels: preBuckets.map(b => b.l),
+        datasets: [
+          { label: 'Pre-test', data: preBuckets.map(b => b.c), backgroundColor: 'rgba(56,189,248,.25)', borderColor: '#38bdf8', borderWidth: 1, borderRadius: 6, borderSkipped: false },
+          { label: 'Post-test', data: postBuckets.map(b => b.c), backgroundColor: 'rgba(167,139,250,.25)', borderColor: '#a78bfa', borderWidth: 1, borderRadius: 6, borderSkipped: false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 24 } },
+        plugins: {
+          legend: { labels: { color: '#64748b', font: { size: 11, family: 'Inter' }, boxWidth: 12, padding: 16 } },
+          tooltip: { backgroundColor: '#fff', borderColor: '#e2e8f0', borderWidth: 1, titleColor: '#1e293b', bodyColor: '#64748b', cornerRadius: 8 },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            color: '#1e293b',
+            font: { size: 11, weight: 700, family: 'Inter' },
+            formatter: v => v > 0 ? v : ''
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, ticks: { stepSize: 1, color:'#64748b', font:{size:11,family:'Inter'} }, grid:{color:'rgba(0,0,0,0.04)'} },
+          x: { ticks: { color:'#64748b', font:{size:11,family:'Inter'} }, grid:{display:false} }
+        }
+      }
+    });
+  }
+
+  const ctx2 = document.getElementById('compare-bar-chart');
+  if (ctx2) {
+    charts.compareBar = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: ['Average Score %', 'Pass Rate %'],
+        datasets: [
+          { label: 'Pre-test', data: [Math.round(preAvg), prePassPct], backgroundColor: 'rgba(56,189,248,.3)', borderColor: '#38bdf8', borderWidth: 1, borderRadius: 8, borderSkipped: false },
+          { label: 'Post-test', data: [Math.round(postAvg), postPassPct], backgroundColor: 'rgba(167,139,250,.3)', borderColor: '#a78bfa', borderWidth: 1, borderRadius: 8, borderSkipped: false }
+        ]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { top: 24 } },
+        plugins: {
+          legend: { labels: { color: '#64748b', font: { size: 11, family: 'Inter' }, boxWidth: 12, padding: 16 } },
+          tooltip: { backgroundColor: '#fff', borderColor: '#e2e8f0', borderWidth: 1, titleColor: '#1e293b', bodyColor: '#64748b', cornerRadius: 8 },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            color: '#1e293b',
+            font: { size: 12, weight: 700, family: 'Inter' },
+            formatter: v => v + '%'
+          }
+        },
+        scales: {
+          y: { beginAtZero: true, max: 100, ticks: { color:'#64748b', font:{size:11,family:'Inter'}, callback: v => v+'%' }, grid:{color:'rgba(0,0,0,0.04)'} },
+          x: { ticks: { color:'#64748b', font:{size:11,family:'Inter'} }, grid:{display:false} }
+        }
+      }
+    });
+  }
+
+  // Top improvers
+  if (matched.length) {
+    const topImprove = [...matched].sort((a,b) => b.delta - a.delta).slice(0,5);
+    const topDecline = [...matched].sort((a,b) => a.delta - b.delta).slice(0,5);
+
+    const tiEl = document.getElementById('compare-top-improve');
+    topImprove.forEach((r,i) => {
+      tiEl.innerHTML += `<li class="rank-item">
+        <span class="rank-num" style="color:#34d399">${i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1}</span>
+        <div style="flex:1;min-width:0">
+          <div class="rank-name">${r.name}</div>
+          <div style="font-size:11px;color:#64748b">${r.proj} · ${r.prePct}% → ${r.postPct}%</div>
+          <div class="bar-outer"><div class="bar-inner bar-green" style="width:${Math.min(r.postPct,100)}%"></div></div>
+        </div>
+        <span class="rank-score-top">${deltaSign(r.delta)}${r.delta}%</span>
+      </li>`;
+    });
+
+    const tdEl = document.getElementById('compare-top-decline');
+    topDecline.forEach((r,i) => {
+      tdEl.innerHTML += `<li class="rank-item">
+        <span class="rank-num">${i+1}</span>
+        <div style="flex:1;min-width:0">
+          <div class="rank-name">${r.name}</div>
+          <div style="font-size:11px;color:#64748b">${r.proj} · ${r.prePct}% → ${r.postPct}%</div>
+          <div class="bar-outer"><div class="bar-inner bar-red" style="width:${Math.min(r.postPct,100)}%"></div></div>
+        </div>
+        <span class="rank-score-bot">${deltaSign(r.delta)}${r.delta}%</span>
+      </li>`;
+    });
+
+    // Comparison table
+    const cBody = document.getElementById('compare-table-body');
+    const sortedMatched = [...matched].sort((a,b) => b.delta - a.delta);
+    sortedMatched.forEach((r,i) => {
+      cBody.innerHTML += `<tr>
+        <td style="color:#94a3b8">${i+1}</td>
+        <td style="font-weight:600;color:#1e293b">${r.name}</td>
+        <td><span style="background:#e0f2fe;color:#0369a1;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid #bae6fd">${r.dist}</span></td>
+        <td style="color:#475569">${r.proj}</td>
+        <td style="color:#1d6a8a;font-weight:600">${r.preScore}/${r.total} <span style="color:#94a3b8;font-weight:400">(${r.prePct}%)</span></td>
+        <td style="color:#7c3aed;font-weight:600">${r.postScore}/${r.total} <span style="color:#94a3b8;font-weight:400">(${r.postPct}%)</span></td>
+        <td class="${deltaClass(r.delta)}" style="font-weight:700">${deltaSign(r.delta)}${r.delta}%</td>
+        <td style="font-size:16px" class="${deltaClass(r.delta)}">${deltaArrow(r.delta)}</td>
+      </tr>`;
+    });
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════════ */
+// Try restoring from localStorage, else use default
+(async () => {
+  try {
+    // Reveal admin controls if ?admin=1 is in URL
+    if (new URLSearchParams(window.location.search).get('admin') === '1') {
+      document.querySelectorAll('.admin-only').forEach(el => el.classList.remove('admin-only'));
+    }
+
+    // Restore sync settings or use hardcoded live defaults
+    const preId = localStorage.getItem('preSheetId') || '1nIaGd0GkIgtzbzR6FMNCoUhUzZoiurF1jqJgg5e-Ndw';
+    const preTab = localStorage.getItem('preSheetTab') || 'Sheet1';
+    const postId = localStorage.getItem('postSheetId') || '1K9ent4CeXrKpA4-EqiPQ-OiEJVwx0mtPgZYfaajjChc';
+    const postTab = localStorage.getItem('postSheetTab') || 'Sheet1';
+    
+    if (preId) document.getElementById('pre-sheet-id').value = preId;
+    document.getElementById('pre-sheet-tab').value = preTab;
+    if (postId) document.getElementById('post-sheet-id').value = postId;
+    document.getElementById('post-sheet-tab').value = postTab;
+
+    const savedPreSync = localStorage.getItem('preSyncCSV');
+    const savedPostSync = localStorage.getItem('postSyncCSV');
+    const savedPrePaste = localStorage.getItem('preTestData');
+    const savedPostPaste = localStorage.getItem('postTestData');
+    
+    if (savedPreSync) preData = processDataMatrix(parseCSV(savedPreSync));
+    else if (savedPrePaste) preData = parseRows(savedPrePaste);
+    else preData = parseRows(DEFAULT_PRE_TSV);
+    
+    if (savedPostSync) postData = processDataMatrix(parseCSV(savedPostSync));
+    else if (savedPostPaste) postData = parseRows(savedPostPaste);
+
+    // Initial render with cached data
+    populateFilters('pre');
+    if (postData.length) populateFilters('post');
+    renderDashboard('pre');
+    renderDashboard('post');
+    
+    // Auto-sync live data on every load without blocking the UI completely if we have cached data
+    const syncPromises = [];
+    if (preId) syncPromises.push(syncFromSheet('pre', true));
+    if (postId) syncPromises.push(syncFromSheet('post', true));
+    
+    if (syncPromises.length > 0) {
+      // Only show the big loader if we don't have any cached data at all
+      if (!savedPreSync && !savedPrePaste) {
+        document.getElementById('global-loader').style.display = 'flex';
+      } else {
+        document.getElementById('last-refresh-time').innerText = 'Syncing...';
+      }
+      
+      await Promise.all(syncPromises);
+      const now = new Date();
+      const timeString = now.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+      document.getElementById('last-refresh-time').innerText = `Last refreshed: ${timeString}`;
+    }
+    
+  } catch(e) {
+    preData = parseRows(DEFAULT_PRE_TSV);
+  } finally {
+    document.getElementById('global-loader').style.display = 'none';
+  }
+
+  ['pre-f-dist','pre-f-proj','pre-f-from','pre-f-to'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+      if (id === 'pre-f-dist') updateProjectFilter('pre');
+      renderDashboard('pre');
+    });
+  });
+  ['post-f-dist','post-f-proj','post-f-from','post-f-to'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => {
+      if (id === 'post-f-dist') updateProjectFilter('post');
+      renderDashboard('post');
+    });
+  });
+})();
+</script>
+</body>
+</html>
