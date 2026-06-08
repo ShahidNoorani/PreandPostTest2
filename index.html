@@ -1143,12 +1143,9 @@ function renderComparison() {
     if (postId) syncPromises.push(syncFromSheet('post', true));
     
     if (syncPromises.length > 0) {
-      // Only show the big loader if we don't have any cached data at all
-      if (!savedPreSync && !savedPrePaste) {
-        document.getElementById('global-loader').style.display = 'flex';
-      } else {
-        document.getElementById('last-refresh-time').innerText = 'Syncing...';
-      }
+      // Never block the screen with the global loader. Always show the dashboard instantly.
+      // If there's no cached data, it will briefly show placeholder data while syncing in the background.
+      document.getElementById('last-refresh-time').innerText = 'Syncing Live Data...';
       
       await Promise.all(syncPromises);
       const now = new Date();
